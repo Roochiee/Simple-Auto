@@ -1,0 +1,99 @@
+-- Auto Collect Script with TouchTransmitter Detection, Crate + Potion Support
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+local collecting = false
+local TOGGLE_KEY = Enum.KeyCode.P
+local pickupCounter = 0
+
+local VALID_PARENT_NAMES = {
+    ["box_"] = true,
+    ["potion_"] = true
+}
+
+local function showBigMessage(message)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Auto Collector",
+        Text = message,
+        Duration = 3
+    })
+end
+
+local function systemChat(message)
+    StarterGui:SetCore("ChatMakeSystemMessage", {
+        Text = "[AutoCollector] " .. message,
+        Color = Color3.fromRGB(0, 255, 0),
+        Font = Enum.Font.SourceSansBold,
+        FontSize = Enum.FontSize.Size24
+    })
+end
+
+local function touchPart(part)
+    local originalCFrame = HumanoidRootPart.CFrame
+    HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0, 2, 0)
+    wait(0.15)
+    HumanoidRootPart.CFrame = originalCFrame
+end
+
+local function isValidPickupObject(obj)
+    if obj:IsA("BasePart") and obj:FindFirstChildOfClass("TouchTransmitter") then
+        local parent = obj.Parent
+        if parent and typeof(parent.Name) == "string" then
+            for prefix, _ in pairs(VALID_PARENT_NAMES) do
+                if parent.Name:lower():find(prefix) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function collectAllTouchables()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if isValidPickupObject(obj) then
+            touchPart(obj)
+            pickupCounter += 1
+            systemChat("Collected: " .. pickupCounter .. " item(s)")
+        end
+    end
+end
+
+workspace.DescendantAdded:Connect(function(desc)
+    if not collecting then return end
+    if isValidPickupObject(desc) then
+        wait(0.25)
+        touchPart(desc)
+        pickupCounter += 1
+        systemChat("Collected: " .. pickupCounter .. " item(s)")
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == TOGGLE_KEY then
+        collecting = not collecting
+
+        if collecting then
+            pickupCounter = 0
+            showBigMessage("Auto Grab Activated!")
+            systemChat("Auto Grab Enabled")
+
+            coroutine.wrap(function()
+                while collecting do
+                    collectAllTouchables()
+                    wait(5)
+                end
+            end)()
+        else
+            showBigMessage("Auto Grab Deactivated.")
+            systemChat("Auto Grab Disabled. Total collected: " .. pickupCounter)
+        end
+    end
+end)
