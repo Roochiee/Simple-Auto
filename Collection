@@ -1,4 +1,4 @@
--- Auto Collect Script with TouchTransmitter Detection, Crate + Potion Support
+-- Auto Collect Script with GUI + Minimize Toggle + Restore Fix (Fully Working)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -11,6 +11,7 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local collecting = false
 local TOGGLE_KEY = Enum.KeyCode.P
 local pickupCounter = 0
+local minimized = false
 
 local VALID_PARENT_NAMES = {
     ["box_"] = true,
@@ -75,25 +76,160 @@ workspace.DescendantAdded:Connect(function(desc)
     end
 end)
 
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoCollectorGUI"
+gui.ResetOnSpawn = false
+gui.Parent = game:GetService("CoreGui")
+
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 200, 0, 100)
+frame.Position = UDim2.new(0, 20, 0.5, -50)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 50, 50)
+stroke.Thickness = 2
+stroke.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "ToggleButton"
+toggleBtn.Size = UDim2.new(1, -20, 0, 30)
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.GothamSemibold
+toggleBtn.TextSize = 16
+toggleBtn.Text = "Auto Collect: OFF"
+toggleBtn.Parent = frame
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Name = "MinimizeButton"
+minimizeBtn.Size = UDim2.new(1, -20, 0, 30)
+minimizeBtn.Position = UDim2.new(0, 10, 0, 50)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.Font = Enum.Font.GothamBlack
+minimizeBtn.TextSize = 16
+minimizeBtn.Text = "Minimize"
+minimizeBtn.Parent = frame
+
+local function toggleCollect()
+    collecting = not collecting
+    toggleBtn.Text = collecting and "Auto Collect: ON" or "Auto Collect: OFF"
+    if collecting then
+        pickupCounter = 0
+        showBigMessage("Auto Grab Activated!")
+        systemChat("Auto Grab Enabled")
+        coroutine.wrap(function()
+            while collecting do
+                collectAllTouchables()
+                wait(5)
+            end
+        end)()
+    else
+        showBigMessage("Auto Grab Deactivated.")
+        systemChat("Auto Grab Disabled. Total collected: " .. pickupCounter)
+    end
+end
+
+toggleBtn.MouseButton1Click:Connect(toggleCollect)
+
+local function restoreUI()
+    frame:ClearAllChildren()
+    frame.Size = UDim2.new(0, 200, 0, 100)
+    frame.BackgroundTransparency = 0
+
+    local strokeRestore = Instance.new("UIStroke")
+    strokeRestore.Color = Color3.fromRGB(255, 50, 50)
+    strokeRestore.Thickness = 2
+    strokeRestore.Parent = frame
+
+    local newToggle = toggleBtn:Clone()
+    newToggle.Parent = frame
+    newToggle.MouseButton1Click:Connect(toggleCollect)
+
+    local newMinimize = minimizeBtn:Clone()
+    newMinimize.Parent = frame
+    newMinimize.MouseButton1Click:Connect(function()
+        minimized = true
+        frame:ClearAllChildren()
+        frame.Size = UDim2.new(0, 40, 0, 40)
+        frame.BackgroundTransparency = 1
+
+        local circle = Instance.new("Frame")
+        circle.Size = UDim2.new(1, 0, 1, 0)
+        circle.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+        circle.BackgroundTransparency = 0.2
+        circle.BorderSizePixel = 0
+        circle.Position = UDim2.new(0, 0, 0, 0)
+        circle.ZIndex = 0
+        circle.Parent = frame
+
+        local uiCorner = Instance.new("UICorner")
+        uiCorner.CornerRadius = UDim.new(1, 0)
+        uiCorner.Parent = circle
+
+        local smallBtn = Instance.new("TextButton")
+        smallBtn.Size = UDim2.new(1, 0, 1, 0)
+        smallBtn.BackgroundTransparency = 1
+        smallBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+        smallBtn.Font = Enum.Font.GothamBold
+        smallBtn.TextSize = 20
+        smallBtn.Text = "A"
+        smallBtn.ZIndex = 1
+        smallBtn.Parent = frame
+
+        smallBtn.MouseButton1Click:Connect(function()
+            minimized = false
+            restoreUI()
+        end)
+    end)
+end
+
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = true
+    frame:ClearAllChildren()
+    frame.Size = UDim2.new(0, 40, 0, 40)
+    frame.BackgroundTransparency = 1
+
+    local circle = Instance.new("Frame")
+    circle.Size = UDim2.new(1, 0, 1, 0)
+    circle.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+    circle.BackgroundTransparency = 0.2
+    circle.BorderSizePixel = 0
+    circle.Position = UDim2.new(0, 0, 0, 0)
+    circle.ZIndex = 0
+    circle.Parent = frame
+
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = circle
+
+    local smallBtn = Instance.new("TextButton")
+    smallBtn.Size = UDim2.new(1, 0, 1, 0)
+    smallBtn.BackgroundTransparency = 1
+    smallBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+    smallBtn.Font = Enum.Font.GothamBold
+    smallBtn.TextSize = 20
+    smallBtn.Text = "A"
+    smallBtn.ZIndex = 1
+    smallBtn.Parent = frame
+
+    smallBtn.MouseButton1Click:Connect(function()
+        minimized = false
+        restoreUI()
+    end)
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == TOGGLE_KEY then
-        collecting = not collecting
-
-        if collecting then
-            pickupCounter = 0
-            showBigMessage("Auto Grab Activated!")
-            systemChat("Auto Grab Enabled")
-
-            coroutine.wrap(function()
-                while collecting do
-                    collectAllTouchables()
-                    wait(5)
-                end
-            end)()
-        else
-            showBigMessage("Auto Grab Deactivated.")
-            systemChat("Auto Grab Disabled. Total collected: " .. pickupCounter)
-        end
+        toggleCollect()
     end
 end)
